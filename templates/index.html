@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>BibTeX ID Fixer</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #0f172a;
+      color: #e5e7eb;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+    }
+
+    .card {
+      background: #020617;
+      border-radius: 1.5rem;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.6);
+      padding: 2rem 2.5rem;
+      max-width: 560px;
+      width: 100%;
+      border: 1px solid rgba(148, 163, 184, 0.3);
+    }
+
+    h1 {
+      font-size: 1.7rem;
+      margin: 0 0 0.3rem;
+    }
+
+    .subtitle {
+      font-size: 0.95rem;
+      color: #9ca3af;
+      margin-bottom: 1.5rem;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.75rem;
+      padding: 0.2rem 0.6rem;
+      border-radius: 999px;
+      background: rgba(34, 197, 94, 0.1);
+      color: #4ade80;
+      margin-bottom: 0.75rem;
+    }
+
+    form {
+      margin-top: 1rem;
+    }
+
+    .field-label {
+      display: block;
+      font-size: 0.85rem;
+      margin-bottom: 0.35rem;
+    }
+
+    .hint {
+      font-size: 0.8rem;
+      color: #9ca3af;
+      margin-top: 0.25rem;
+    }
+
+    .file-input-wrapper {
+      border: 1px dashed rgba(148, 163, 184, 0.7);
+      border-radius: 0.9rem;
+      padding: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      cursor: pointer;
+      transition: background 0.15s ease, border-color 0.15s ease;
+    }
+
+    .file-input-wrapper:hover {
+      background: rgba(15, 23, 42, 0.7);
+      border-color: #6366f1;
+    }
+
+    .file-input-wrapper span {
+      font-size: 0.9rem;
+      color: #e5e7eb;
+    }
+
+    input[type="file"] {
+      display: none;
+    }
+
+    .button-row {
+      margin-top: 1.4rem;
+      display: flex;
+      justify-content: flex-end;
+    }
+
+    button {
+      border: none;
+      border-radius: 999px;
+      padding: 0.6rem 1.4rem;
+      font-size: 0.95rem;
+      font-weight: 500;
+      cursor: pointer;
+      background: linear-gradient(135deg, #4f46e5, #6366f1);
+      color: #e5e7eb;
+      box-shadow: 0 10px 25px rgba(59, 130, 246, 0.4);
+      transition: transform 0.12s ease, box-shadow 0.12s ease, filter 0.12s ease;
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+      filter: brightness(1.05);
+      box-shadow: 0 14px 30px rgba(59, 130, 246, 0.45);
+    }
+
+    button:active {
+      transform: translateY(0);
+      box-shadow: 0 8px 18px rgba(59, 130, 246, 0.35);
+    }
+
+    .footer {
+      margin-top: 1.6rem;
+      font-size: 0.75rem;
+      color: #6b7280;
+    }
+
+    .footer code {
+      background: rgba(15, 23, 42, 0.9);
+      padding: 0.1rem 0.35rem;
+      border-radius: 0.35rem;
+    }
+
+    .file-name {
+      font-size: 0.8rem;
+      color: #9ca3af;
+      margin-top: 0.4rem;
+    }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <div class="badge">
+      ● Online
+      <span>Detector e corretor de IDs BibTeX</span>
+    </div>
+
+    <h1>BibTeX ID Fixer</h1>
+    <p class="subtitle">
+      Envie um arquivo <code>.bib</code>. Entradas com identificador vazio como
+      <code>@misc{, ...}</code> serão automaticamente corrigidas com novos IDs,
+      e um arquivo atualizado será baixado.
+    </p>
+
+    <form action="/upload" method="post" enctype="multipart/form-data">
+      <label class="field-label" for="bibfile">Arquivo BibTeX</label>
+      <label class="file-input-wrapper">
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="17 8 12 3 7 8"/>
+          <line x1="12" y1="3" x2="12" y2="15"/>
+        </svg>
+        <span>Selecione seu arquivo <strong>.bib</strong></span>
+        <input type="file" id="bibfile" name="bibfile" accept=".bib" required />
+      </label>
+      <p class="hint">
+        O sistema mantém IDs já existentes e gera apenas para entradas sem ID.
+      </p>
+
+      <div class="button-row">
+        <button type="submit">Corrigir &amp; baixar</button>
+      </div>
+    </form>
+
+    <p class="footer">
+      Dica: depois de corrigir, substitua seu arquivo antigo pelo novo
+      <code>*_corrigido.bib</code> no seu projeto LaTeX.
+    </p>
+  </main>
+
+  <script>
+    // Apenas pra mostrar o nome do arquivo escolhido (UX)
+    const input = document.getElementById('bibfile');
+    const wrapper = document.querySelector('.file-input-wrapper');
+    const subtitle = wrapper.querySelector('span');
+
+    input.addEventListener('change', () => {
+      if (input.files.length > 0) {
+        subtitle.textContent = input.files[0].name;
+      } else {
+        subtitle.innerHTML = 'Selecione seu arquivo <strong>.bib</strong>';
+      }
+    });
+  </script>
+</body>
+</html>
