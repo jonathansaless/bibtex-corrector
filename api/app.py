@@ -162,6 +162,6 @@ def upload():
     return response
 
 
-# Execução local
-if __name__ == "__main__":
-    app.run(debug=True)
+# # Execução local
+# if __name__ == "__main__":
+#     app.run(debug=True)
