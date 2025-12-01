@@ -2,6 +2,7 @@ import io
 import re
 from flask import Flask, render_template, request, send_file, abort
 import bibtexparser
+from bibtexparser.bparser import BibTexParser
 
 app = Flask(__name__)
 
@@ -11,7 +12,7 @@ app = Flask(__name__)
 # -----------------------------------------------------------
 
 def gerar_id_titulo_ano(titulo: str, ano: str) -> str:
-    # Remove chaves do BibTeX
+    # Remove chaves do BibTeX e espaços extras
     titulo = titulo.replace("{", "").replace("}", "").strip()
 
     # Pega a primeira palavra do título
@@ -27,16 +28,55 @@ def gerar_id_titulo_ano(titulo: str, ano: str) -> str:
 
 
 # -----------------------------------------------------------
-#  CORRIGIR @tipo{, ... } ANTES do bibtexparser
+#  NOVO: CORRIGIR ESPAÇOS NO ID (Raw Regex)
+# -----------------------------------------------------------
+
+def corrigir_espacos_ids_raw(conteudo: str) -> str:
+    """
+    Localiza IDs que possuem espaços (ex: @article{Dal Maso2025,)
+    e substitui os espaços por underlines (ex: @article{Dal_Maso2025,).
+    Faz trim (remove espaços nas pontas) antes de substituir os internos.
+    """
+    
+    # Regex Breakdown:
+    # (@\w+\s*{\s*)  -> Grupo 1: Captura "@tipo{" e possíveis espaços iniciais
+    # ([^,]+?)       -> Grupo 2: Captura o ID (tudo até a primeira vírgula, modo non-greedy)
+    # (\s*,)         -> Grupo 3: Captura a vírgula e espaços anteriores
+    pattern = r"(@\w+\s*{\s*)([^,]+?)(\s*,)"
+
+    def replacer(match):
+        prefix = match.group(1)  # ex: @ARTICLE{
+        raw_id = match.group(2)  # ex: Dal Maso2025
+        suffix = match.group(3)  # ex: ,
+
+        # Se não tiver espaço, retorna como está
+        if ' ' not in raw_id:
+            return match.group(0)
+
+        # 1. Remove espaços das bordas (trim) para não criar _Dal_Maso_
+        # 2. Substitui espaços internos por _
+        clean_id = raw_id.strip()
+        
+        # Se após o strip o ID ficar vazio, deixa para a função de ID vazio tratar depois
+        if not clean_id:
+            return match.group(0)
+
+        new_id = re.sub(r"\s+", "_", clean_id)
+        
+        return f"{prefix}{new_id}{suffix}"
+
+    return re.sub(pattern, replacer, conteudo)
+
+
+# -----------------------------------------------------------
+#  CORRIGIR @tipo{, ... } (IDs Vazios) Raw Regex
 # -----------------------------------------------------------
 
 def corrigir_ids_vazios_raw(conteudo: str) -> str:
     """
     Corrige entradas com ID vazio diretamente no texto,
     antes de passar pelo bibtexparser.
-    Isso evita que o parser converta a entrada em @comment{...}.
     """
-
     pattern = r"@(\w+)\s*{\s*,(.*?)}\s*(?=@\w+|$)"
 
     def replacer(match):
@@ -80,11 +120,14 @@ def gerar_id_unico(entry, existing_ids, fallback_index):
 
 
 def corrigir_bibtex(conteudo_bib):
-    """
-    Agora esta função só corrige IDs vazios remanescentes,
-    já que a maioria foi tratada pelo pré-processador raw.
-    """
-    bib_db = bibtexparser.loads(conteudo_bib)
+    parser = BibTexParser()
+    parser.ignore_nonstandard_types = False
+    
+    try:
+        bib_db = bibtexparser.loads(conteudo_bib, parser=parser)
+    except Exception as e:
+        # Fallback simples se falhar parsing complexo
+        bib_db = bibtexparser.loads(conteudo_bib)
 
     existing_ids = set(e.get("ID") for e in bib_db.entries if e.get("ID"))
     total_entradas = len(bib_db.entries)
@@ -92,6 +135,7 @@ def corrigir_bibtex(conteudo_bib):
 
     for idx, entry in enumerate(bib_db.entries, start=1):
         entry_id = entry.get("ID", "")
+        # Verifica se está vazio ou None
         if not entry_id or entry_id.strip() == "":
             entry["ID"] = gerar_id_unico(entry, existing_ids, idx)
             total_corrigidas += 1
@@ -99,7 +143,9 @@ def corrigir_bibtex(conteudo_bib):
     texto_corrigido = bibtexparser.dumps(bib_db)
 
     comentario = (
-        f"% Corrigido automaticamente: {total_corrigidas} de {total_entradas} entradas sem ID.\n"
+        f"% Processamento completo.\n"
+        f"% IDs vazios preenchidos: {total_corrigidas}\n"
+        f"% IDs com espaços ajustados previamente.\n"
         f"% Gerado por BibTeX ID Fixer (Flask).\n\n"
     )
 
@@ -132,12 +178,18 @@ def upload():
         conteudo = raw.decode("latin-1")
 
     # -----------------------------------------------------------
-    # 1) Corrigir IDs vazios no TEXTO BRUTO (regex)
+    # 1) Corrigir IDs com ESPAÇOS no TEXTO BRUTO
+    #    (Executado primeiro para garantir formato válido)
+    # -----------------------------------------------------------
+    conteudo = corrigir_espacos_ids_raw(conteudo)
+
+    # -----------------------------------------------------------
+    # 2) Corrigir IDs vazios no TEXTO BRUTO (regex)
     # -----------------------------------------------------------
     conteudo = corrigir_ids_vazios_raw(conteudo)
 
     # -----------------------------------------------------------
-    # 2) Carregar no bibtexparser e corrigir IDs faltantes
+    # 3) Carregar no bibtexparser e corrigir IDs faltantes remanescentes
     # -----------------------------------------------------------
     bib_corrigido, total, corrigidas = corrigir_bibtex(conteudo)
 
@@ -162,6 +214,5 @@ def upload():
     return response
 
 
-# # Execução local
 if __name__ == "__main__":
     app.run(debug=True)

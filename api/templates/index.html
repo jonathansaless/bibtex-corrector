@@ -39,6 +39,7 @@
       font-size: 0.95rem;
       color: #9ca3af;
       margin-bottom: 1.5rem;
+      line-height: 1.5;
     }
 
     .badge {
@@ -152,9 +153,9 @@
 
     <h1>BibTeX ID Fixer</h1>
     <p class="subtitle">
-      Envie um arquivo <code>.bib</code>. Entradas com identificador vazio como
-      <code>@misc{, ...}</code> serão automaticamente corrigidas com novos IDs,
-      e um arquivo atualizado será baixado.
+      Envie um arquivo <code>.bib</code>. O sistema irá:<br>
+      1. Preencher <strong>IDs vazios</strong> (ex: <code>@misc{, ...}</code>).<br>
+      2. Corrigir <strong>espaços em IDs</strong> (ex: <code>Dal Maso</code> → <code>Dal_Maso</code>).
     </p>
 
     <form action="/upload" method="post" enctype="multipart/form-data">
@@ -169,7 +170,7 @@
         <input type="file" id="bibfile" name="bibfile" accept=".bib" required />
       </label>
       <p class="hint">
-        O sistema mantém IDs já existentes e gera apenas para entradas sem ID.
+        O sistema preserva IDs válidos e ajusta apenas os problemáticos.
       </p>
 
       <div class="button-row">
